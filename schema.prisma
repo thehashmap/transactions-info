@@ -11,19 +11,31 @@ datasource db {
 model Wallet {
     id           Int           @id @default(sequence())
     address      String        @unique
-    createdAt    DateTime      @default(now())
-    updatedAt    DateTime      @updatedAt
     transactions Transaction[]
 }
 
 model Transaction {
-    id          Int      @id @default(sequence())
-    hash        String   @unique
-    blockNumber Int
-    from        String
-    to          String
-    value       String
-    timestamp   DateTime
-    wallet      Wallet   @relation(fields: [walletId], references: [id])
-    walletId    Int
+    id                Int      @id @default(sequence())
+    hash              String   @unique
+    blockNumber       String
+    timeStamp         DateTime
+    from              String
+    to                String
+    value             String
+    nonce             String
+    blockHash         String
+    transactionIndex  String
+    gas               String
+    gasPrice          String
+    isError           String
+    txreceipt_status  String
+    input             String
+    contractAddress   String
+    cumulativeGasUsed String
+    gasUsed           String
+    confirmations     String
+    methodId          String
+    functionName      String
+    wallet            Wallet   @relation(fields: [walletId], references: [id])
+    walletId          Int
 }
