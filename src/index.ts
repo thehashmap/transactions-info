@@ -10,7 +10,7 @@ const prisma = new PrismaClient();
 
 // Utility function to fetch transaction info from Etherscan API
 async function fetchTransactionInfo(walletAddress: string): Promise<any> {
-  const etherscanBaseUrl = "https://api-goerli.etherscan.io/api";
+  const etherscanBaseUrl = "https://api.etherscan.io/api";
   const apiKey = process.env.ETHERSCAN_API_KEY; // Access API key from environment variable
 
   const uniTokenAddress = "0x1f9840a85d5af5bf1d1762f925bdaddc4201f984";
@@ -50,10 +50,23 @@ async function fetchTransactionInfo(walletAddress: string): Promise<any> {
 // Main function to fetch wallet addresses from JSON, call API, and save data to database
 async function fetchAndSaveData(): Promise<void> {
   try {
-    // Load wallet addresses from a JSON file (you can add more addresses here)
-    const walletAddresses = ["0x34d014758297c00FeA49935FCe172677904d51EF"]; // Update with your desired wallet addresses
+    // Load wallet addresses from a JSON file
+    const walletAddresses = JSON.parse(
+      fs.readFileSync("./src/wallet-addresses.json", "utf8")
+    );
 
-    for (const walletAddress of walletAddresses) {
+    // Get the processed addresses from the JSON file
+    const processedAddresses = JSON.parse(
+      fs.readFileSync("./src/processed-addresses.json", "utf8")
+    );
+    const processedAddressSet = new Set(processedAddresses);
+
+    // Filter out the addresses that haven't been processed yet
+    const remainingAddresses = walletAddresses.filter(
+      (address: string) => !processedAddressSet.has(address)
+    );
+
+    for (const walletAddress of remainingAddresses) {
       const transactionInfo = await fetchTransactionInfo(walletAddress);
       if (transactionInfo.length > 0) {
         await prisma.wallet.create({
@@ -87,6 +100,13 @@ async function fetchAndSaveData(): Promise<void> {
             },
           },
         });
+
+        // Add the processed address to the JSON file to avoid duplicates
+        processedAddresses.push(walletAddress);
+        fs.writeFileSync(
+          "./src/processed-addresses.json",
+          JSON.stringify(processedAddresses, null, 2)
+        );
       }
     }
 

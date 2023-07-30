@@ -3,6 +3,8 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
+// src/index.ts
+const fs_1 = __importDefault(require("fs"));
 const axios_1 = __importDefault(require("axios"));
 const client_1 = require("@prisma/client");
 const dotenv_1 = __importDefault(require("dotenv"));
@@ -10,7 +12,7 @@ dotenv_1.default.config(); // Load environment variables from .env file
 const prisma = new client_1.PrismaClient();
 // Utility function to fetch transaction info from Etherscan API
 async function fetchTransactionInfo(walletAddress) {
-    const etherscanBaseUrl = "https://api-goerli.etherscan.io/api";
+    const etherscanBaseUrl = "https://api.etherscan.io/api";
     const apiKey = process.env.ETHERSCAN_API_KEY; // Access API key from environment variable
     const uniTokenAddress = "0x1f9840a85d5af5bf1d1762f925bdaddc4201f984";
     const sushiTokenAddress = "0x6B3595068778DD592e39A122f4f5a5cF09C90fE2";
@@ -39,9 +41,14 @@ async function fetchTransactionInfo(walletAddress) {
 // Main function to fetch wallet addresses from JSON, call API, and save data to database
 async function fetchAndSaveData() {
     try {
-        // Load wallet addresses from a JSON file (you can add more addresses here)
-        const walletAddresses = ["0x34d014758297c00FeA49935FCe172677904d51EF"]; // Update with your desired wallet addresses
-        for (const walletAddress of walletAddresses) {
+        // Load wallet addresses from a JSON file
+        const walletAddresses = JSON.parse(fs_1.default.readFileSync("./src/wallet-addresses.json", "utf8"));
+        // Get the processed addresses from the JSON file
+        const processedAddresses = JSON.parse(fs_1.default.readFileSync("./src/processed-addresses.json", "utf8"));
+        const processedAddressSet = new Set(processedAddresses);
+        // Filter out the addresses that haven't been processed yet
+        const remainingAddresses = walletAddresses.filter((address) => !processedAddressSet.has(address));
+        for (const walletAddress of remainingAddresses) {
             const transactionInfo = await fetchTransactionInfo(walletAddress);
             if (transactionInfo.length > 0) {
                 await prisma.wallet.create({
@@ -75,6 +82,9 @@ async function fetchAndSaveData() {
                         },
                     },
                 });
+                // Add the processed address to the JSON file to avoid duplicates
+                processedAddresses.push(walletAddress);
+                fs_1.default.writeFileSync("./src/processed-addresses.json", JSON.stringify(processedAddresses, null, 2));
             }
         }
         console.log("Data fetching and saving complete.");
