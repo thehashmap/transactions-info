@@ -28,12 +28,12 @@ async function fetchTransactionInfo(walletAddress: string): Promise<any> {
     console.log("latestBlockNumber: ", latestBlockNumber);
 
     // Use the latest block number to update the erc20txns URL
-    // const erc20txns = `${etherscanBaseUrl}?module=account&action=tokentx&contractaddress=${uniTokenAddress}&address=${walletAddress}&startblock=0&endblock=${latestBlockNumber}&page=1&offset=1000&apiKey=${apiKey}`;
+    const erc20txns = `${etherscanBaseUrl}?module=account&action=tokentx&contractaddress=${uniTokenAddress}&address=${walletAddress}&startblock=0&endblock=${latestBlockNumber}&page=1&offset=1000&apiKey=${apiKey}`;
     // const erc20txns = `${etherscanBaseUrl}?module=account&action=tokentx&address=${walletAddress}&startblock=0&endblock=${latestBlockNumber}&page=1&offset=1000&sort=asc&apiKey=${apiKey}`;
     const txnsList = `${etherscanBaseUrl}?module=account&action=txlist&address=${walletAddress}&startblock=0&endblock=${latestBlockNumber}&page=1&offset=1000&sort=asc&apiKey=${apiKey}`;
 
     // Fetch ERC20 transactions using the updated URL
-    const response = await axios.get(txnsList);
+    const response = await axios.get(erc20txns);
     console.log(response.data);
     return response.data.result;
   } catch (error) {
@@ -69,37 +69,37 @@ async function fetchAndSaveData(): Promise<void> {
     for (const walletAddress of remainingAddresses) {
       const transactionInfo = await fetchTransactionInfo(walletAddress);
       if (transactionInfo.length > 0) {
-        await prisma.wallet.create({
-          data: {
-            address: walletAddress,
-            transactions: {
-              createMany: {
-                data: transactionInfo.map((transaction: any) => ({
-                  hash: transaction.hash,
-                  blockNumber: transaction.blockNumber,
-                  timeStamp: new Date(parseInt(transaction.timeStamp) * 1000),
-                  from: transaction.from,
-                  to: transaction.to,
-                  value: transaction.value,
-                  nonce: transaction.nonce,
-                  blockHash: transaction.blockHash,
-                  transactionIndex: transaction.transactionIndex,
-                  gas: transaction.gas,
-                  gasPrice: transaction.gasPrice,
-                  isError: transaction.isError,
-                  txreceipt_status: transaction.txreceipt_status,
-                  input: transaction.input,
-                  contractAddress: transaction.contractAddress,
-                  cumulativeGasUsed: transaction.cumulativeGasUsed,
-                  gasUsed: transaction.gasUsed,
-                  confirmations: transaction.confirmations,
-                  methodId: transaction.methodId,
-                  functionName: transaction.functionName,
-                })),
-              },
-            },
-          },
-        });
+        //     await prisma.wallet.create({
+        //       data: {
+        //         address: walletAddress,
+        //         transactions: {
+        //           createMany: {
+        //             data: transactionInfo.map((transaction: any) => ({
+        //               hash: transaction.hash,
+        //               blockNumber: transaction.blockNumber,
+        //               timeStamp: new Date(parseInt(transaction.timeStamp) * 1000),
+        //               from: transaction.from,
+        //               to: transaction.to,
+        //               value: transaction.value,
+        //               nonce: transaction.nonce,
+        //               blockHash: transaction.blockHash,
+        //               transactionIndex: transaction.transactionIndex,
+        //               gas: transaction.gas,
+        //               gasPrice: transaction.gasPrice,
+        //               isError: transaction.isError,
+        //               txreceipt_status: transaction.txreceipt_status,
+        //               input: transaction.input,
+        //               contractAddress: transaction.contractAddress,
+        //               cumulativeGasUsed: transaction.cumulativeGasUsed,
+        //               gasUsed: transaction.gasUsed,
+        //               confirmations: transaction.confirmations,
+        //               methodId: transaction.methodId,
+        //               functionName: transaction.functionName,
+        //             })),
+        //           },
+        //         },
+        //       },
+        //     });
 
         // Add the processed address to the JSON file to avoid duplicates
         processedAddresses.push(walletAddress);
@@ -113,10 +113,13 @@ async function fetchAndSaveData(): Promise<void> {
     console.log("Data fetching and saving complete.");
   } catch (error) {
     console.error("Error in fetchAndSaveData:", error);
-  } finally {
-    await prisma.$disconnect();
   }
+  //   finally {
+  //     await prisma.$disconnect();
+  //   }
 }
 
 // Call the main function to start the process
-fetchAndSaveData();
+// fetchAndSaveData();
+
+fetchTransactionInfo("0x8f492f2df0546dceacfefb8f22fb9d87b6a48b81");
