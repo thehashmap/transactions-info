@@ -9,9 +9,11 @@ datasource db {
 }
 
 model Wallet {
-    id           Int           @id @default(sequence())
-    address      String        @unique
-    transactions Transaction[]
+    id                 Int                 @id @default(sequence())
+    address            String              @unique
+    transactions       Transaction[]
+    erc20Transactions  ERC20Transaction[]
+    erc721Transactions ERC721Transaction[]
 }
 
 model Transaction {
@@ -36,6 +38,56 @@ model Transaction {
     confirmations     String
     methodId          String
     functionName      String
+    wallet            Wallet   @relation(fields: [walletId], references: [id])
+    walletId          Int
+}
+
+model ERC20Transaction {
+    id                Int      @id @default(sequence())
+    blockNumber       String
+    timeStamp         DateTime
+    hash              String   @unique
+    nonce             String
+    blockHash         String
+    from              String
+    contractAddress   String
+    to                String
+    value             String
+    tokenName         String
+    tokenSymbol       String
+    tokenDecimal      String
+    transactionIndex  String
+    gas               String
+    gasPrice          String
+    gasUsed           String
+    cumulativeGasUsed String
+    input             String
+    confirmations     String
+    wallet            Wallet   @relation(fields: [walletId], references: [id])
+    walletId          Int
+}
+
+model ERC721Transaction {
+    id                Int      @id @default(sequence())
+    blockNumber       String
+    timeStamp         DateTime
+    hash              String   @unique
+    nonce             String
+    blockHash         String
+    from              String
+    contractAddress   String
+    to                String
+    tokenID           String
+    tokenName         String
+    tokenSymbol       String
+    tokenDecimal      String
+    transactionIndex  String
+    gas               String
+    gasPrice          String
+    gasUsed           String
+    cumulativeGasUsed String
+    input             String
+    confirmations     String
     wallet            Wallet   @relation(fields: [walletId], references: [id])
     walletId          Int
 }
