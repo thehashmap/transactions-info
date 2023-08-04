@@ -6,7 +6,9 @@
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
     "start": "tsc && node dist/index.js",
-    "balance": "tsc && node dist/balance.js"
+    "erc20-balance": "tsc && node dist/erc20-balance.js",
+    "erc721-balance": "tsc && node dist/erc721-balance.js",
+    "eth-balance": "tsc && node dist/eth-balance.js"
   },
   "repository": {
     "type": "git",
@@ -24,6 +26,7 @@
     "axios": "^1.4.0",
     "bignumber.js": "^9.1.1",
     "dotenv": "^16.3.1",
+    "moment": "^2.29.4",
     "prisma": "^5.0.0"
   }
 }

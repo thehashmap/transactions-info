@@ -18,7 +18,7 @@ model Wallet {
 
 model Transaction {
     id                Int      @id @default(sequence())
-    hash              String   @unique
+    hash              String
     blockNumber       String
     timeStamp         DateTime
     from              String
@@ -46,7 +46,7 @@ model ERC20Transaction {
     id                Int      @id @default(sequence())
     blockNumber       String
     timeStamp         DateTime
-    hash              String   @unique
+    hash              String
     nonce             String
     blockHash         String
     from              String
@@ -71,7 +71,7 @@ model ERC721Transaction {
     id                Int      @id @default(sequence())
     blockNumber       String
     timeStamp         DateTime
-    hash              String   @unique
+    hash              String
     nonce             String
     blockHash         String
     from              String

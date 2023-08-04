@@ -3,6 +3,9 @@ import fs from "fs";
 import axios from "axios";
 import { PrismaClient } from "@prisma/client";
 import dotenv from "dotenv";
+import { getBalanceHistory } from "./eth-balance";
+import { getTokenBalanceHistory } from "./erc20-balance";
+import { getNFTBalanceHistory } from "./erc721-balance";
 
 dotenv.config(); // Load environment variables from .env file
 
@@ -25,17 +28,29 @@ async function fetchTransactionInfo(walletAddress: string): Promise<any> {
       `${etherscanBaseUrl}?module=block&action=getblocknobytime&timestamp=${currentTimestampInSeconds}&closest=before&apiKey=${apiKey}`
     );
     const latestBlockNumber = latestBlockNumberResponse.data.result;
-    console.log("latestBlockNumber: ", latestBlockNumber);
+    // console.log("latestBlockNumber: ", latestBlockNumber);
 
-    // Use the latest block number to update the erc20txns URL
-    const erc20txns = `${etherscanBaseUrl}?module=account&action=tokentx&contractaddress=${uniTokenAddress}&address=${walletAddress}&startblock=0&endblock=${latestBlockNumber}&page=1&offset=1000&apiKey=${apiKey}`;
-    // const erc20txns = `${etherscanBaseUrl}?module=account&action=tokentx&address=${walletAddress}&startblock=0&endblock=${latestBlockNumber}&page=1&offset=1000&sort=asc&apiKey=${apiKey}`;
-    const txnsList = `${etherscanBaseUrl}?module=account&action=txlist&address=${walletAddress}&startblock=0&endblock=${latestBlockNumber}&page=1&offset=1000&sort=asc&apiKey=${apiKey}`;
+    // Use the latest block number to update the URLs
+    const erc20txnsUrl = `${etherscanBaseUrl}?module=account&action=tokentx&address=${walletAddress}&startblock=0&endblock=${latestBlockNumber}&page=1&offset=1000&apiKey=${apiKey}`;
+    const uniTokentxnsUrl = `${etherscanBaseUrl}?module=account&action=tokentx&contractaddress=${uniTokenAddress}&address=${walletAddress}&startblock=0&endblock=${latestBlockNumber}&page=1&offset=1000&apiKey=${apiKey}`;
+    const erc721txnsUrl = `${etherscanBaseUrl}?module=account&action=tokennfttx&address=${walletAddress}&startblock=0&endblock=${latestBlockNumber}&page=1&offset=1000&sort=asc&apiKey=${apiKey}`;
+    const txnsListUrl = `${etherscanBaseUrl}?module=account&action=txlist&address=${walletAddress}&startblock=0&endblock=${latestBlockNumber}&page=1&offset=1000&sort=asc&apiKey=${apiKey}`;
+    const sushiTokentxnsUrl = `${etherscanBaseUrl}?module=account&action=tokentx&contractaddress=${sushiTokenAddress}&address=${walletAddress}&startblock=0&endblock=${latestBlockNumber}&page=1&offset=1000&apiKey=${apiKey}`;
 
-    // Fetch ERC20 transactions using the updated URL
-    const response = await axios.get(erc20txns);
-    console.log(response.data);
-    return response.data.result;
+    // Fetch transactions data using the updated URLs
+    const erc20txns = await axios.get(erc20txnsUrl);
+    const uniTokentxns = await axios.get(uniTokentxnsUrl);
+    const erc721txns = await axios.get(erc721txnsUrl);
+    const txnsList = await axios.get(txnsListUrl);
+    const sushiTokentxns = await axios.get(sushiTokentxnsUrl);
+
+    return {
+      erc20txns: erc20txns.data,
+      uniTokentxns: uniTokentxns.data,
+      erc721txns: erc721txns.data,
+      txnsList: txnsList.data,
+      sushiTokentxns: sushiTokentxns.data,
+    };
   } catch (error) {
     // Explicitly cast 'error' to 'Error' type to resolve TypeScript error
     console.error(
@@ -43,8 +58,19 @@ async function fetchTransactionInfo(walletAddress: string): Promise<any> {
         (error as Error).message
       }`
     );
-    return [];
+    return {};
   }
+}
+
+// Get wallet ID from database using wallet address
+async function getWalletId(address: any) {
+  const wallet = await prisma.wallet.findUnique({
+    where: {
+      address: address,
+    },
+  });
+
+  return wallet ? wallet.id : null;
 }
 
 // Main function to fetch wallet addresses from JSON, call API, and save data to database
@@ -67,59 +93,149 @@ async function fetchAndSaveData(): Promise<void> {
     );
 
     for (const walletAddress of remainingAddresses) {
-      const transactionInfo = await fetchTransactionInfo(walletAddress);
-      if (transactionInfo.length > 0) {
-        //     await prisma.wallet.create({
-        //       data: {
-        //         address: walletAddress,
-        //         transactions: {
-        //           createMany: {
-        //             data: transactionInfo.map((transaction: any) => ({
-        //               hash: transaction.hash,
-        //               blockNumber: transaction.blockNumber,
-        //               timeStamp: new Date(parseInt(transaction.timeStamp) * 1000),
-        //               from: transaction.from,
-        //               to: transaction.to,
-        //               value: transaction.value,
-        //               nonce: transaction.nonce,
-        //               blockHash: transaction.blockHash,
-        //               transactionIndex: transaction.transactionIndex,
-        //               gas: transaction.gas,
-        //               gasPrice: transaction.gasPrice,
-        //               isError: transaction.isError,
-        //               txreceipt_status: transaction.txreceipt_status,
-        //               input: transaction.input,
-        //               contractAddress: transaction.contractAddress,
-        //               cumulativeGasUsed: transaction.cumulativeGasUsed,
-        //               gasUsed: transaction.gasUsed,
-        //               confirmations: transaction.confirmations,
-        //               methodId: transaction.methodId,
-        //               functionName: transaction.functionName,
-        //             })),
-        //           },
-        //         },
-        //       },
-        //     });
+      const walletId = await getWalletId(walletAddress);
 
-        // Add the processed address to the JSON file to avoid duplicates
-        processedAddresses.push(walletAddress);
-        fs.writeFileSync(
-          "./src/processed-addresses.json",
-          JSON.stringify(processedAddresses, null, 2)
+      if (!walletId) {
+        console.error(`No wallet found for address ${walletAddress}`);
+        continue; // Skip this iteration if no wallet was found
+      }
+
+      const transactionInfo = await fetchTransactionInfo(walletAddress);
+
+      //   console.log(transactionInfo);
+
+      // Check the status of each transaction type before proceeding
+      if (
+        transactionInfo.erc20txns &&
+        transactionInfo.erc20txns.status !== "0"
+      ) {
+        // getTokenBalanceHistory(transactionInfo.erc20txns.result, walletAddress);
+
+        await prisma.eRC20Transaction.createMany({
+          data: transactionInfo.erc20txns.result.map((transaction: any) => ({
+            blockNumber: transaction.blockNumber,
+            timeStamp: new Date(
+              parseInt(transaction.timeStamp) * 1000
+            ).toISOString(),
+            hash: transaction.hash,
+            nonce: transaction.nonce,
+            blockHash: transaction.blockHash,
+            from: transaction.from,
+            contractAddress: transaction.contractAddress,
+            to: transaction.to,
+            value: transaction.value,
+            tokenName: transaction.tokenName,
+            tokenSymbol: transaction.tokenSymbol,
+            tokenDecimal: transaction.tokenDecimal,
+            transactionIndex: transaction.transactionIndex,
+            gas: transaction.gas,
+            gasPrice: transaction.gasPrice,
+            gasUsed: transaction.gasUsed,
+            cumulativeGasUsed: transaction.cumulativeGasUsed,
+            input: transaction.input,
+            confirmations: transaction.confirmations,
+            walletId: walletId, // Add walletId to the data
+          })),
+        });
+      }
+
+      if (
+        transactionInfo.erc721txns &&
+        transactionInfo.erc721txns.status !== "0"
+      ) {
+        await prisma.eRC721Transaction.createMany({
+          data: transactionInfo.erc721txns.result.map((transaction: any) => ({
+            blockNumber: transaction.blockNumber,
+            timeStamp: new Date(parseInt(transaction.timeStamp) * 1000),
+            hash: transaction.hash,
+            nonce: transaction.nonce,
+            blockHash: transaction.blockHash,
+            from: transaction.from,
+            contractAddress: transaction.contractAddress,
+            to: transaction.to,
+            tokenID: transaction.tokenID,
+            tokenName: transaction.tokenName,
+            tokenSymbol: transaction.tokenSymbol,
+            tokenDecimal: transaction.tokenDecimal,
+            transactionIndex: transaction.transactionIndex,
+            gas: transaction.gas,
+            gasPrice: transaction.gasPrice,
+            gasUsed: transaction.gasUsed,
+            cumulativeGasUsed: transaction.cumulativeGasUsed,
+            input: transaction.input,
+            confirmations: transaction.confirmations,
+            // walletAddress: walletAddress,
+            walletId: walletId, // Add walletId to the data
+          })),
+        });
+      }
+
+      if (transactionInfo.txnsList && transactionInfo.txnsList.status !== "0") {
+        getBalanceHistory(transactionInfo.txnsList.result, walletAddress);
+        await prisma.transaction.createMany({
+          data: transactionInfo.txnsList.result.map((transaction: any) => ({
+            hash: transaction.hash,
+            blockNumber: transaction.blockNumber,
+            timeStamp: new Date(parseInt(transaction.timeStamp) * 1000),
+            from: transaction.from,
+            to: transaction.to,
+            value: transaction.value,
+            nonce: transaction.nonce,
+            blockHash: transaction.blockHash,
+            transactionIndex: transaction.transactionIndex,
+            gas: transaction.gas,
+            gasPrice: transaction.gasPrice,
+            isError: transaction.isError,
+            txreceipt_status: transaction.txreceipt_status,
+            input: transaction.input,
+            contractAddress: transaction.contractAddress,
+            cumulativeGasUsed: transaction.cumulativeGasUsed,
+            gasUsed: transaction.gasUsed,
+            confirmations: transaction.confirmations,
+            methodId: transaction.methodId,
+            functionName: transaction.functionName,
+            walletId: walletId, // Add walletId to the data
+          })),
+        });
+      }
+
+      if (
+        transactionInfo.uniTokentxns &&
+        transactionInfo.uniTokentxns.status !== "0"
+      ) {
+        getTokenBalanceHistory(
+          transactionInfo.uniTokentxns.result,
+          walletAddress
         );
       }
+
+      if (
+        transactionInfo.sushiTokentxns &&
+        transactionInfo.sushiTokentxns.status !== "0"
+      ) {
+        getTokenBalanceHistory(
+          transactionInfo.sushiTokentxns.result,
+          walletAddress
+        );
+      }
+
+      processedAddresses.push(walletAddress);
+      fs.writeFileSync(
+        "./src/processed-addresses.json",
+        JSON.stringify(processedAddresses, null, 2)
+      );
     }
 
     console.log("Data fetching and saving complete.");
   } catch (error) {
     console.error("Error in fetchAndSaveData:", error);
+  } finally {
+    await prisma.$disconnect();
   }
-  //   finally {
-  //     await prisma.$disconnect();
-  //   }
 }
 
-// Call the main function to start the process
-// fetchAndSaveData();
+fetchAndSaveData();
 
-fetchTransactionInfo("0x8f492f2df0546dceacfefb8f22fb9d87b6a48b81");
+// fetchTransactionInfo("0x8f492f2df0546dceacfefb8f22fb9d87b6a48b81");
+// fetchTransactionInfo("0x8f492f2df0546dceacfefb8f22fb9d87b6a48b81");
+// fetchTransactionInfo("0x07e3a678fac8af6525216b9520b304a78b809743");
