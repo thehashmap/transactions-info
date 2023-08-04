@@ -1,23 +1,11 @@
-import { BigNumber } from "bignumber.js";
+import {BigNumber} from "bignumber.js";
 
 type Transaction = {
-  blockNumber: string;
-  timeStamp: string;
-  hash: string;
+  timeStamp: Date;
   from: string;
-  contractAddress: string;
   to: string;
   value: string;
-  tokenName: string;
-  tokenSymbol: string;
   tokenDecimal: string;
-  transactionIndex: string;
-  gas: string;
-  gasPrice: string;
-  gasUsed: string;
-  cumulativeGasUsed: string;
-  input: string;
-  confirmations: string;
 };
 
 export function getTokenBalanceHistory(
@@ -34,9 +22,7 @@ export function getTokenBalanceHistory(
 
   transactions.forEach((transaction) => {
     const value: BigNumber = new BigNumber(transaction.value);
-    const transactionDate: Date = new Date(
-      parseInt(transaction.timeStamp, 10) * 1000
-    );
+    const transactionDate: Date = transaction.timeStamp;
     const weekNumber = getWeekNumber(transactionDate);
 
     if (transaction.from.toLowerCase() === walletAddress) {
