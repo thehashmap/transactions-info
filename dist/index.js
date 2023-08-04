@@ -24,7 +24,7 @@ async function fetchTransactionInfo(walletAddress) {
         // Get the latest block number from the Etherscan API
         const latestBlockNumberResponse = await axios_1.default.get(`${etherscanBaseUrl}?module=block&action=getblocknobytime&timestamp=${currentTimestampInSeconds}&closest=before&apiKey=${apiKey}`);
         const latestBlockNumber = latestBlockNumberResponse.data.result;
-        console.log("latestBlockNumber: ", latestBlockNumber);
+        // console.log("latestBlockNumber: ", latestBlockNumber);
         // Use the latest block number to update the URLs
         const erc20txnsUrl = `${etherscanBaseUrl}?module=account&action=tokentx&address=${walletAddress}&startblock=0&endblock=${latestBlockNumber}&page=1&offset=1000&apiKey=${apiKey}`;
         const uniTokentxnsUrl = `${etherscanBaseUrl}?module=account&action=tokentx&contractaddress=${uniTokenAddress}&address=${walletAddress}&startblock=0&endblock=${latestBlockNumber}&page=1&offset=1000&apiKey=${apiKey}`;
@@ -77,12 +77,11 @@ async function fetchAndSaveData() {
                 continue; // Skip this iteration if no wallet was found
             }
             const transactionInfo = await fetchTransactionInfo(walletAddress);
-            console.log(transactionInfo);
+            //   console.log(transactionInfo);
             // Check the status of each transaction type before proceeding
             if (transactionInfo.erc20txns &&
                 transactionInfo.erc20txns.status !== "0") {
                 // getTokenBalanceHistory(transactionInfo.erc20txns.result, walletAddress);
-                console.log("cheems");
                 await prisma.eRC20Transaction.createMany({
                     data: transactionInfo.erc20txns.result.map((transaction) => ({
                         blockNumber: transaction.blockNumber,
@@ -108,7 +107,6 @@ async function fetchAndSaveData() {
                     })),
                 });
             }
-            console.log("bonk");
             if (transactionInfo.erc721txns &&
                 transactionInfo.erc721txns.status !== "0") {
                 await prisma.eRC721Transaction.createMany({
@@ -137,7 +135,6 @@ async function fetchAndSaveData() {
                     })),
                 });
             }
-            console.log("hemlo");
             if (transactionInfo.txnsList && transactionInfo.txnsList.status !== "0") {
                 (0, eth_balance_1.getBalanceHistory)(transactionInfo.txnsList.result, walletAddress);
                 await prisma.transaction.createMany({

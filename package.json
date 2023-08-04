@@ -8,7 +8,8 @@
     "start": "tsc && node dist/index.js",
     "erc20-balance": "tsc && node dist/erc20-balance.js",
     "erc721-balance": "tsc && node dist/erc721-balance.js",
-    "eth-balance": "tsc && node dist/eth-balance.js"
+    "eth-balance": "tsc && node dist/eth-balance.js",
+    "pool-activity": "tsc && node dist/pool-activity.js"
   },
   "repository": {
     "type": "git",

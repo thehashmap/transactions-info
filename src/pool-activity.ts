@@ -1,3 +1,5 @@
+import { BigNumber } from "bignumber.js";
+
 type Transaction = {
   blockNumber: string;
   timeStamp: string;
@@ -9693,31 +9695,89 @@ const transactions: Transaction[] = [
   },
 ];
 
-let swapCount = 0;
-let liquidityCount = 0;
+const uniswapv2Transactions: { time: string; value: BigNumber }[] = [];
+const uniswapv3Transactions: { time: string; value: BigNumber }[] = [];
+const sushiswapTransactions: { time: string; value: BigNumber }[] = [];
+const oneinchTransactions: { time: string; value: BigNumber }[] = [];
+
+let uniswapv2Total = new BigNumber(0);
+let uniswapv3Total = new BigNumber(0);
+let sushiswapTotal = new BigNumber(0);
+let oneinchTotal = new BigNumber(0);
 
 transactions.forEach((tx) => {
-  // Check if the transaction is related to one of the platforms
-  if (
-    [
-      UNISWAP_V2_ROUTER_ADDRESS,
-      SUSHISWAP_ROUTER_ADDRESS,
-      ONEINCH_ROUTER_ADDRESS,
-    ].includes(tx.to.toLowerCase())
-  ) {
-    // If the function is a swap function
-    if (SWAP_METHODS.includes(tx.functionName)) {
-      console.log(`Swap transaction found at timestamp: ${tx.timeStamp}`);
-      swapCount++;
-    }
+  const time = new Date(Number(tx.timeStamp) * 1000).toISOString();
+  const value = new BigNumber(tx.value);
+  const ether = value.dividedBy(new BigNumber("1e18")).toFixed();
 
-    // If the function is a liquidity function
-    if (LIQUIDITY_METHODS.includes(tx.functionName)) {
-      console.log(`Liquidity transaction found at timestamp: ${tx.timeStamp}`);
-      liquidityCount++;
+  if (tx.to.toLowerCase() === UNISWAP_V2_ROUTER_ADDRESS.toLowerCase()) {
+    if (tx.functionName.startsWith("addLiquidity")) {
+      uniswapv2Transactions.push({ time, value: value });
+      uniswapv2Total = uniswapv2Total.plus(value);
+      console.log(
+        "v2",
+        uniswapv2Total.dividedBy(new BigNumber("1e18")).toFixed()
+      );
+    } else if (tx.functionName.startsWith("removeLiquidity")) {
+      uniswapv2Transactions.push({ time, value: value.negated() });
+      uniswapv2Total = uniswapv2Total.minus(value);
+      console.log(
+        "v2",
+        uniswapv2Total.dividedBy(new BigNumber("1e18")).toFixed()
+      );
+    }
+  } else if (tx.to.toLowerCase() === UNISWAP_V3_ROUTER_ADDRESS.toLowerCase()) {
+    if (tx.functionName.startsWith("addLiquidity")) {
+      uniswapv3Transactions.push({ time, value: value });
+      uniswapv3Total = uniswapv3Total.plus(value);
+      console.log(
+        "v3",
+        uniswapv3Total.dividedBy(new BigNumber("1e18")).toFixed()
+      );
+    } else if (tx.functionName.startsWith("removeLiquidity")) {
+      uniswapv3Transactions.push({ time, value: value.negated() });
+      uniswapv3Total = uniswapv3Total.minus(value);
+      console.log(
+        "v3",
+        uniswapv3Total.dividedBy(new BigNumber("1e18")).toFixed()
+      );
+    }
+  } else if (tx.to.toLowerCase() === SUSHISWAP_ROUTER_ADDRESS.toLowerCase()) {
+    if (tx.functionName.startsWith("addLiquidity")) {
+      sushiswapTransactions.push({ time, value: value });
+      sushiswapTotal = sushiswapTotal.plus(value);
+      console.log(
+        "sushi",
+        sushiswapTotal.dividedBy(new BigNumber("1e18")).toFixed()
+      );
+    } else if (tx.functionName.startsWith("removeLiquidity")) {
+      sushiswapTransactions.push({ time, value: value.negated() });
+      sushiswapTotal = sushiswapTotal.minus(value);
+      console.log(
+        "sushi",
+        sushiswapTotal.dividedBy(new BigNumber("1e18")).toFixed()
+      );
+    }
+  } else if (tx.to.toLowerCase() === ONEINCH_ROUTER_ADDRESS.toLowerCase()) {
+    if (tx.functionName.startsWith("addLiquidity")) {
+      oneinchTransactions.push({ time, value: value });
+      oneinchTotal = oneinchTotal.plus(value);
+      console.log(
+        "1inch",
+        oneinchTotal.dividedBy(new BigNumber("1e18")).toFixed()
+      );
+    } else if (tx.functionName.startsWith("removeLiquidity")) {
+      oneinchTransactions.push({ time, value: value.negated() });
+      oneinchTotal = oneinchTotal.minus(value);
+      console.log(
+        "1inch",
+        oneinchTotal.dividedBy(new BigNumber("1e18")).toFixed()
+      );
     }
   }
 });
 
-console.log(`Total number of swap transactions: ${swapCount}`);
-console.log(`Total number of liquidity transactions: ${liquidityCount}`);
+console.log("Uniswap V2: ", uniswapv2Transactions);
+console.log("Uniswap V3: ", uniswapv3Transactions);
+console.log("Sushiswap: ", sushiswapTransactions);
+console.log("OneInch: ", oneinchTransactions);
