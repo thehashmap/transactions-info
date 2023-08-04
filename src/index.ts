@@ -6,6 +6,7 @@ import dotenv from "dotenv";
 import { getBalanceHistory } from "./eth-balance";
 import { getTokenBalanceHistory } from "./erc20-balance";
 import { getNFTBalanceHistory } from "./erc721-balance";
+import { getLiquidity } from "./pool-activity";
 
 dotenv.config(); // Load environment variables from .env file
 
@@ -172,6 +173,7 @@ async function fetchAndSaveData(): Promise<void> {
 
       if (transactionInfo.txnsList && transactionInfo.txnsList.status !== "0") {
         getBalanceHistory(transactionInfo.txnsList.result, walletAddress);
+        getLiquidity(transactionInfo.txnsList.result);
         await prisma.transaction.createMany({
           data: transactionInfo.txnsList.result.map((transaction: any) => ({
             hash: transaction.hash,
