@@ -9,7 +9,8 @@
     "erc20-balance": "tsc && node dist/erc20-balance.js",
     "erc721-balance": "tsc && node dist/erc721-balance.js",
     "eth-balance": "tsc && node dist/eth-balance.js",
-    "pool-activity": "tsc && node dist/pool-activity.js"
+    "pool-activity": "tsc && node dist/pool-activity.js",
+    "swap-activity": "tsc && node dist/swap-activity.js"
   },
   "repository": {
     "type": "git",
@@ -27,6 +28,7 @@
     "axios": "^1.4.0",
     "bignumber.js": "^9.1.1",
     "dotenv": "^16.3.1",
+    "ethers": "^6.7.0",
     "moment": "^2.29.4",
     "prisma": "^5.0.0"
   }
