@@ -1,12 +1,11 @@
 // src/index.ts
-import fs from "fs";
+import {PrismaClient} from "@prisma/client";
 import axios from "axios";
-import { PrismaClient } from "@prisma/client";
 import dotenv from "dotenv";
-import { getBalanceHistory } from "./eth-balance";
-import { getTokenBalanceHistory } from "./erc20-balance";
-import { getNFTBalanceHistory } from "./erc721-balance";
-import { getLiquidity } from "./pool-activity";
+import fs from "fs";
+import {getTokenBalanceHistory} from "./erc20-balance";
+import {getBalanceHistory} from "./eth-balance";
+import {getLiquidity} from "./pool-activity";
 
 dotenv.config(); // Load environment variables from .env file
 
@@ -94,16 +93,30 @@ async function fetchAndSaveData(): Promise<void> {
     );
 
     for (const walletAddress of remainingAddresses) {
-      const walletId = await getWalletId(walletAddress);
 
-      if (!walletId) {
-        console.error(`No wallet found for address ${walletAddress}`);
-        continue; // Skip this iteration if no wallet was found
-      }
 
+      // if (!walletId) {
+      //   console.error(`No wallet found for address ${walletAddress}`);
+      //   continue; // Skip this iteration if no wallet was found
+      // }
+
+      const wallet = await prisma.wallet.upsert({
+        where: {
+          address: walletAddress,
+        },
+        create: {
+          address: walletAddress,
+          erc20Transactions: {},
+          erc721Transactions: {},
+          transactions: {},
+        },
+        update: {
+
+        }
+      })
       const transactionInfo = await fetchTransactionInfo(walletAddress);
 
-      //   console.log(transactionInfo);
+      console.log('transactionInfo', transactionInfo);
 
       // Check the status of each transaction type before proceeding
       if (
@@ -135,7 +148,7 @@ async function fetchAndSaveData(): Promise<void> {
             cumulativeGasUsed: transaction.cumulativeGasUsed,
             input: transaction.input,
             confirmations: transaction.confirmations,
-            walletId: walletId, // Add walletId to the data
+            walletId: wallet.id, // Add walletId to the data
           })),
         });
       }
@@ -166,7 +179,7 @@ async function fetchAndSaveData(): Promise<void> {
             input: transaction.input,
             confirmations: transaction.confirmations,
             // walletAddress: walletAddress,
-            walletId: walletId, // Add walletId to the data
+            walletId: wallet.id, // Add walletId to the data
           })),
         });
       }
@@ -196,7 +209,7 @@ async function fetchAndSaveData(): Promise<void> {
             confirmations: transaction.confirmations,
             methodId: transaction.methodId,
             functionName: transaction.functionName,
-            walletId: walletId, // Add walletId to the data
+            walletId: wallet.id, // Add walletId to the data
           })),
         });
       }
