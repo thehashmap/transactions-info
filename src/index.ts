@@ -35,6 +35,7 @@ async function fetchTransactionInfo(walletAddress: string): Promise<any> {
     const uniTokentxnsUrl = `${etherscanBaseUrl}?module=account&action=tokentx&contractaddress=${uniTokenAddress}&address=${walletAddress}&startblock=0&endblock=${latestBlockNumber}&page=1&offset=1000&apiKey=${apiKey}`;
     const erc721txnsUrl = `${etherscanBaseUrl}?module=account&action=tokennfttx&address=${walletAddress}&startblock=0&endblock=${latestBlockNumber}&page=1&offset=1000&sort=asc&apiKey=${apiKey}`;
     const txnsListUrl = `${etherscanBaseUrl}?module=account&action=txlist&address=${walletAddress}&startblock=0&endblock=${latestBlockNumber}&page=1&offset=1000&sort=asc&apiKey=${apiKey}`;
+    const internalTxnsListUrl = `${etherscanBaseUrl}?module=account&action=txlistinternal&address=${walletAddress}&startblock=0&endblock=${latestBlockNumber}&page=1&offset=1000&sort=asc&apiKey=${apiKey}`;
     const sushiTokentxnsUrl = `${etherscanBaseUrl}?module=account&action=tokentx&contractaddress=${sushiTokenAddress}&address=${walletAddress}&startblock=0&endblock=${latestBlockNumber}&page=1&offset=1000&apiKey=${apiKey}`;
 
     // Fetch transactions data using the updated URLs
@@ -42,6 +43,7 @@ async function fetchTransactionInfo(walletAddress: string): Promise<any> {
     const uniTokentxns = await axios.get(uniTokentxnsUrl);
     const erc721txns = await axios.get(erc721txnsUrl);
     const txnsList = await axios.get(txnsListUrl);
+    const internalTxnsList = await axios.get(internalTxnsListUrl);
     const sushiTokentxns = await axios.get(sushiTokentxnsUrl);
 
     return {
@@ -49,6 +51,7 @@ async function fetchTransactionInfo(walletAddress: string): Promise<any> {
       uniTokentxns: uniTokentxns.data,
       erc721txns: erc721txns.data,
       txnsList: txnsList.data,
+      internalTxnsList: internalTxnsList.data,
       sushiTokentxns: sushiTokentxns.data,
     };
   } catch (error) {
@@ -195,7 +198,7 @@ async function fetchAndSaveData(): Promise<void> {
         }
 
         if (transactionInfo.txnsList && transactionInfo.txnsList.status !== '0') {
-          //   getBalanceHistory(transactionInfo.txnsList.result, wallet);
+            getBalanceHistory(wallet.address, transactionInfo.txnsList.result);
           getLiquidity(transactionInfo.txnsList.result);
           await prisma.transaction.createMany({
             data: transactionInfo.txnsList.result.map((transaction: any) => ({
@@ -223,6 +226,36 @@ async function fetchAndSaveData(): Promise<void> {
             })),
           });
         }
+
+        if (transactionInfo.internalTxnsList && transactionInfo.internalTxnsList.status !== '0') {
+            //   getBalanceHistory(wallet.address, transactionInfo.internalTxnsList.result);
+            // getLiquidity(transactionInfo.internalTxnsList.result);
+            await prisma.transaction.createMany({
+              data: transactionInfo.internalTxnsList.result.map((transaction: any) => ({
+                hash: transaction.hash,
+                blockNumber: transaction.blockNumber,
+                timeStamp: new Date(parseInt(transaction.timeStamp) * 1000),
+                from: transaction.from,
+                to: transaction.to,
+                value: transaction.value,
+                nonce: transaction.nonce,
+                blockHash: transaction.blockHash,
+                transactionIndex: transaction.transactionIndex,
+                gas: transaction.gas,
+                gasPrice: transaction.gasPrice,
+                isError: transaction.isError,
+                txreceipt_status: transaction.txreceipt_status,
+                input: transaction.input,
+                contractAddress: transaction.contractAddress,
+                cumulativeGasUsed: transaction.cumulativeGasUsed,
+                gasUsed: transaction.gasUsed,
+                confirmations: transaction.confirmations,
+                methodId: transaction.methodId,
+                functionName: transaction.functionName,
+                walletId: wallet.id, // Add walletId to the data
+              })),
+            });
+          }
 
         if (transactionInfo.uniTokentxns && transactionInfo.uniTokentxns.status !== '0') {
           getTokenBalanceHistory(transactionInfo.uniTokentxns.result, wallet.address);
