@@ -5,12 +5,13 @@
   "main": "index.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-    "start": "tsc && node dist/index.js",
+    "start": "tsc src/index.ts && node src/index.js",
     "erc20-balance": "tsc && node dist/erc20-balance.js",
     "erc721-balance": "tsc && node dist/erc721-balance.js",
     "eth-balance": "tsc && node dist/eth-balance.js",
     "pool-activity": "tsc && node dist/pool-activity.js",
-    "swap-activity": "tsc && node dist/swap-activity.js"
+    "swap-activity": "tsc && node dist/swap-activity.js",
+    "load-wallets": "tsc src/walletAddressLoader.ts | node src/walletAddressLoader.js"
   },
   "repository": {
     "type": "git",
