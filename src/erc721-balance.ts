@@ -20,17 +20,13 @@ type Transaction = {
   confirmations: string;
 };
 
-export function getNFTBalanceHistory(
-  transactions: Transaction[]
-): Record<string, Transaction[]> {
+export function getNFTBalanceHistory(transactions: Transaction[]): Record<string, Transaction[]> {
   const weeklyTransactions: Record<string, Transaction[]> = {};
 
   transactions.forEach((transaction) => {
     const date = new Date(parseInt(transaction.timeStamp) * 1000);
     // Construct week label as "YYYY-WW"
-    const weekLabel = `${date.getUTCFullYear()}-W${Math.ceil(
-      (date.getUTCDate() + 6) / 7
-    )}`;
+    const weekLabel = `${date.getUTCFullYear()}-W${Math.ceil((date.getUTCDate() + 6) / 7)}`;
 
     if (weeklyTransactions[weekLabel]) {
       weeklyTransactions[weekLabel].push(transaction);

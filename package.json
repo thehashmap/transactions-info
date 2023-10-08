@@ -11,7 +11,9 @@
     "eth-balance": "tsc && node dist/eth-balance.js",
     "pool-activity": "tsc && node dist/pool-activity.js",
     "swap-activity": "tsc && node dist/swap-activity.js",
-    "load-wallets": "tsc src/walletAddressLoader.ts | node src/walletAddressLoader.js"
+    "load-wallets": "tsc src/walletAddressLoader.ts | node src/walletAddressLoader.js",
+    "prettier-fix": "prettier --config .prettierrc 'src/**/*.ts' --write",
+    "lint": "eslint 'src/**/*.ts'"
   },
   "repository": {
     "type": "git",
@@ -26,12 +28,17 @@
   "homepage": "https://github.com/thehashmap/transactions-info#readme",
   "dependencies": {
     "@prisma/client": "^5.0.0",
+    "@typescript-eslint/eslint-plugin": "^6.7.4",
+    "@typescript-eslint/parser": "^6.7.4",
     "axios": "^1.4.0",
     "bignumber.js": "^9.1.1",
     "dotenv": "^16.3.1",
+    "eslint": "^8.51.0",
     "ethers": "^6.7.0",
     "moment": "^2.29.4",
-    "prisma": "^5.0.0"
+    "prettier": "^3.0.3",
+    "prisma": "^5.0.0",
+    "typescript": "^5.2.2"
   },
   "devDependencies": {
     "@types/node": "^20.4.6",

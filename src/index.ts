@@ -1,11 +1,11 @@
 // src/index.ts
-import { PrismaClient, Wallet, WalletStatus } from "@prisma/client";
-import axios from "axios";
-import * as dotenv from "dotenv";
-import * as fs from "fs";
-import { getTokenBalanceHistory } from "./erc20-balance";
-import { getBalanceHistory } from "./eth-balance";
-import { getLiquidity } from "./pool-activity";
+import { PrismaClient, Wallet, WalletStatus } from '@prisma/client';
+import axios from 'axios';
+import * as dotenv from 'dotenv';
+import * as fs from 'fs';
+import { getTokenBalanceHistory } from './erc20-balance';
+import { getBalanceHistory } from './eth-balance';
+import { getLiquidity } from './pool-activity';
 
 // dotenv.config(); // Load environment variables from .env file
 
@@ -13,11 +13,11 @@ const prisma = new PrismaClient();
 
 // Utility function to fetch transaction info from Etherscan API
 async function fetchTransactionInfo(walletAddress: string): Promise<any> {
-  const etherscanBaseUrl = "https://api.etherscan.io/api";
+  const etherscanBaseUrl = 'https://api.etherscan.io/api';
   const apiKey = process.env.ETHERSCAN_API_KEY; // Access API key from environment variable
 
-  const uniTokenAddress = "0x1f9840a85d5af5bf1d1762f925bdaddc4201f984";
-  const sushiTokenAddress = "0x6B3595068778DD592e39A122f4f5a5cF09C90fE2";
+  const uniTokenAddress = '0x1f9840a85d5af5bf1d1762f925bdaddc4201f984';
+  const sushiTokenAddress = '0x6B3595068778DD592e39A122f4f5a5cF09C90fE2';
 
   try {
     // Get the current timestamp (Unix timestamp) in seconds
@@ -25,7 +25,7 @@ async function fetchTransactionInfo(walletAddress: string): Promise<any> {
 
     // Get the latest block number from the Etherscan API
     const latestBlockNumberResponse = await axios.get(
-      `${etherscanBaseUrl}?module=block&action=getblocknobytime&timestamp=${currentTimestampInSeconds}&closest=before&apiKey=${apiKey}`
+      `${etherscanBaseUrl}?module=block&action=getblocknobytime&timestamp=${currentTimestampInSeconds}&closest=before&apiKey=${apiKey}`,
     );
     const latestBlockNumber = latestBlockNumberResponse.data.result;
     // console.log("latestBlockNumber: ", latestBlockNumber);
@@ -53,11 +53,7 @@ async function fetchTransactionInfo(walletAddress: string): Promise<any> {
     };
   } catch (error) {
     // Explicitly cast 'error' to 'Error' type to resolve TypeScript error
-    console.error(
-      `Error fetching transaction info for address ${walletAddress}: ${
-        (error as Error).message
-      }`
-    );
+    console.error(`Error fetching transaction info for address ${walletAddress}: ${(error as Error).message}`);
     return {};
   }
 }
@@ -72,7 +68,7 @@ async function getWalletId(address: any) {
     },
   });
 
-  wallet ? await deleteDataForIndexingWallet(wallet) : console.log("no wallet");
+  wallet ? await deleteDataForIndexingWallet(wallet) : console.log('no wallet');
 
   return wallet ? wallet.id : null;
 }
@@ -101,9 +97,7 @@ async function deleteDataForIndexingWallet(wallet: Wallet): Promise<void> {
       },
     });
 
-    console.log(
-      `Deleted data for wallet ${wallet.address} with INDEXING status.`
-    );
+    console.log(`Deleted data for wallet ${wallet.address} with INDEXING status.`);
   } catch (error) {
     console.error(`Error deleting data for wallet ${wallet.address}:`, error);
   }
@@ -140,21 +134,16 @@ async function fetchAndSaveData(): Promise<void> {
         });
         // Fetch transaction info
         const transactionInfo = await fetchTransactionInfo(wallet.address);
-        console.log("transactionInfo", transactionInfo);
+        console.log('transactionInfo', transactionInfo);
 
         // Check the status of each transaction type before proceeding
-        if (
-          transactionInfo.erc20txns &&
-          transactionInfo.erc20txns.status !== "0"
-        ) {
+        if (transactionInfo.erc20txns && transactionInfo.erc20txns.status !== '0') {
           // getTokenBalanceHistory(transactionInfo.erc20txns.result, walletAddress);
 
           await prisma.eRC20Transaction.createMany({
             data: transactionInfo.erc20txns.result.map((transaction: any) => ({
               blockNumber: transaction.blockNumber,
-              timeStamp: new Date(
-                parseInt(transaction.timeStamp) * 1000
-              ).toISOString(),
+              timeStamp: new Date(parseInt(transaction.timeStamp) * 1000).toISOString(),
               hash: transaction.hash,
               nonce: transaction.nonce,
               blockHash: transaction.blockHash,
@@ -177,10 +166,7 @@ async function fetchAndSaveData(): Promise<void> {
           });
         }
 
-        if (
-          transactionInfo.erc721txns &&
-          transactionInfo.erc721txns.status !== "0"
-        ) {
+        if (transactionInfo.erc721txns && transactionInfo.erc721txns.status !== '0') {
           await prisma.eRC721Transaction.createMany({
             data: transactionInfo.erc721txns.result.map((transaction: any) => ({
               blockNumber: transaction.blockNumber,
@@ -208,10 +194,7 @@ async function fetchAndSaveData(): Promise<void> {
           });
         }
 
-        if (
-          transactionInfo.txnsList &&
-          transactionInfo.txnsList.status !== "0"
-        ) {
+        if (transactionInfo.txnsList && transactionInfo.txnsList.status !== '0') {
           //   getBalanceHistory(transactionInfo.txnsList.result, wallet);
           getLiquidity(transactionInfo.txnsList.result);
           await prisma.transaction.createMany({
@@ -241,24 +224,12 @@ async function fetchAndSaveData(): Promise<void> {
           });
         }
 
-        if (
-          transactionInfo.uniTokentxns &&
-          transactionInfo.uniTokentxns.status !== "0"
-        ) {
-          getTokenBalanceHistory(
-            transactionInfo.uniTokentxns.result,
-            wallet.address
-          );
+        if (transactionInfo.uniTokentxns && transactionInfo.uniTokentxns.status !== '0') {
+          getTokenBalanceHistory(transactionInfo.uniTokentxns.result, wallet.address);
         }
 
-        if (
-          transactionInfo.sushiTokentxns &&
-          transactionInfo.sushiTokentxns.status !== "0"
-        ) {
-          getTokenBalanceHistory(
-            transactionInfo.sushiTokentxns.result,
-            wallet.address
-          );
+        if (transactionInfo.sushiTokentxns && transactionInfo.sushiTokentxns.status !== '0') {
+          getTokenBalanceHistory(transactionInfo.sushiTokentxns.result, wallet.address);
         }
       }
 
@@ -273,9 +244,9 @@ async function fetchAndSaveData(): Promise<void> {
       });
     }
 
-    console.log("Data fetching and saving complete.");
+    console.log('Data fetching and saving complete.');
   } catch (error) {
-    console.error("Error in fetchAndSaveData:", error);
+    console.error('Error in fetchAndSaveData:', error);
   } finally {
     await prisma.$disconnect();
   }

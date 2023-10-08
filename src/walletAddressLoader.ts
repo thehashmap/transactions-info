@@ -1,13 +1,11 @@
-import * as fs from "fs";
-import { PrismaClient, WalletStatus } from "@prisma/client";
+import * as fs from 'fs';
+import { PrismaClient, WalletStatus } from '@prisma/client';
 
 const prisma = new PrismaClient();
 
 export async function loadWalletAddressesFromFile(): Promise<void> {
   try {
-    const walletAddresses = JSON.parse(
-      fs.readFileSync("./src/wallet-addresses.json", "utf8")
-    ) as string[];
+    const walletAddresses = JSON.parse(fs.readFileSync('./src/wallet-addresses.json', 'utf8')) as string[];
 
     for (const walletAddress of walletAddresses) {
       // Check if the wallet address already exists in the database
@@ -28,9 +26,9 @@ export async function loadWalletAddressesFromFile(): Promise<void> {
       }
     }
 
-    console.log("Wallet addresses loaded and stored in the database.");
+    console.log('Wallet addresses loaded and stored in the database.');
   } catch (error) {
-    console.error("Error loading wallet addresses:", error);
+    console.error('Error loading wallet addresses:', error);
   } finally {
     await prisma.$disconnect();
   }
@@ -41,5 +39,5 @@ async function main() {
 }
 
 main().catch((error) => {
-  console.error("An error occurred:", error);
+  console.error('An error occurred:', error);
 });

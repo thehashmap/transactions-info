@@ -1,4 +1,4 @@
-import { BigNumber } from "bignumber.js";
+import { BigNumber } from 'bignumber.js';
 
 type Transaction = {
   blockNumber: string;
@@ -23,10 +23,7 @@ type Transaction = {
   functionName: string;
 };
 
-export function getBalanceHistory(
-  walletAddress: string,
-  transactions: Transaction[]
-) {
+export function getBalanceHistory(walletAddress: string, transactions: Transaction[]) {
   let balance = new BigNumber(0);
   const balanceHistory = [];
 
@@ -48,7 +45,7 @@ export function getBalanceHistory(
     const date = new Date(Number(tx.timeStamp) * 1000).toISOString();
 
     // Convert the balance from Wei to Ether
-    const ether = balance.dividedBy(new BigNumber("1e18")).toFixed();
+    const ether = balance.dividedBy(new BigNumber('1e18')).toFixed();
 
     balanceHistory.push({
       timeStamp: date,

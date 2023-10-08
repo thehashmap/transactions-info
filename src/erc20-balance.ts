@@ -1,4 +1,4 @@
-import {BigNumber} from "bignumber.js";
+import { BigNumber } from 'bignumber.js';
 
 type Transaction = {
   timeStamp: Date;
@@ -8,10 +8,7 @@ type Transaction = {
   tokenDecimal: string;
 };
 
-export function getTokenBalanceHistory(
-  transactions: Transaction[],
-  walletAddress: string
-) {
+export function getTokenBalanceHistory(transactions: Transaction[], walletAddress: string) {
   let balance: BigNumber = new BigNumber(0);
   walletAddress = walletAddress.toLowerCase();
 
@@ -38,9 +35,7 @@ export function getTokenBalanceHistory(
     }
 
     const decimals: number = parseInt(transaction.tokenDecimal, 10);
-    const balanceInCommonUnits: BigNumber = balance.dividedBy(
-      new BigNumber(10).pow(decimals)
-    );
+    const balanceInCommonUnits: BigNumber = balance.dividedBy(new BigNumber(10).pow(decimals));
 
     balanceHistory.push({
       balance: balanceInCommonUnits.toString(),
@@ -50,21 +45,18 @@ export function getTokenBalanceHistory(
     weeklyBalances[weekNumber] = balanceInCommonUnits.toString();
   });
 
-  console.log("The balance history is: ");
+  console.log('The balance history is: ');
   balanceHistory.forEach((record) => {
     console.log(`At date ${record.date}, the balance was ${record.balance}`);
   });
 
-  console.log("The weekly balances are: ");
+  console.log('The weekly balances are: ');
   for (const week in weeklyBalances) {
-    console.log(
-      `For week number ${week}, the balance was ${weeklyBalances[week]}`
-    );
+    console.log(`For week number ${week}, the balance was ${weeklyBalances[week]}`);
   }
 
   if (claimTime && dumpTime) {
-    const differenceInTime: number =
-      (dumpTime as Date).getTime() - (claimTime as Date).getTime();
+    const differenceInTime: number = (dumpTime as Date).getTime() - (claimTime as Date).getTime();
     const differenceInDays: number = differenceInTime / (1000 * 3600 * 24);
     console.log(`Claim time: ${claimTime}`);
     console.log(`Dump time: ${dumpTime}`);
@@ -76,10 +68,8 @@ export function getTokenBalanceHistory(
 function getWeekNumber(d: Date) {
   d = new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()));
   const yearStart = new Date(Date.UTC(d.getUTCFullYear(), 0, 1));
-  const weekNo = Math.ceil(
-    ((d.valueOf() - yearStart.valueOf()) / 86400000 + 1) / 7
-  );
-  return d.getUTCFullYear().toString() + "-" + weekNo;
+  const weekNo = Math.ceil(((d.valueOf() - yearStart.valueOf()) / 86400000 + 1) / 7);
+  return d.getUTCFullYear().toString() + '-' + weekNo;
 }
 
 // const transactions = [
