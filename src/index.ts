@@ -156,7 +156,7 @@ async function fetchAndSaveData(): Promise<void> {
           await prisma.eRC20Transaction.createMany({
             data: transactionInfo.erc20txns.result.map((transaction: any) => ({
               blockNumber: transaction.blockNumber,
-              timeStamp: new Date(parseInt(transaction.timeStamp) * 1000).toISOString(),
+              timeStamp: new Date(parseInt(transaction.timeStamp) * 1000),
               hash: transaction.hash,
               nonce: transaction.nonce,
               blockHash: transaction.blockHash,
