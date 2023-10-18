@@ -15,12 +15,13 @@ enum WalletStatus {
 }
 
 model Wallet {
-    id                 String              @id @default(uuid())
-    address            String              @unique
-    transactions       Transaction[]
-    erc20Transactions  ERC20Transaction[]
-    erc721Transactions ERC721Transaction[]
-    status             WalletStatus
+    id                  String                @id @default(uuid())
+    address             String                @unique
+    transactions        Transaction[]
+    erc20Transactions   ERC20Transaction[]
+    erc721Transactions  ERC721Transaction[]
+    status              WalletStatus
+    InternalTransaction InternalTransaction[]
 }
 
 model Transaction {
@@ -47,6 +48,26 @@ model Transaction {
     functionName      String
     wallet            Wallet   @relation(fields: [walletId], references: [id])
     walletId          String
+}
+
+model InternalTransaction {
+    id              String   @id @default(uuid())
+    hash            String
+    blockNumber     String
+    timeStamp       DateTime
+    from            String
+    to              String
+    value           String
+    input           String
+    contractAddress String
+    type            String
+    traceId         String
+    gas             String
+    gasUsed         String
+    isError         String
+    errCode         String
+    wallet          Wallet   @relation(fields: [walletId], references: [id])
+    walletId        String
 }
 
 model ERC20Transaction {

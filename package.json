@@ -32,13 +32,15 @@
     "@typescript-eslint/parser": "^6.7.4",
     "axios": "^1.4.0",
     "bignumber.js": "^9.1.1",
+    "csv-reader": "^1.0.12",
     "dotenv": "^16.3.1",
     "eslint": "^8.51.0",
     "ethers": "^6.7.0",
     "moment": "^2.29.4",
     "prettier": "^3.0.3",
     "prisma": "^5.0.0",
-    "typescript": "^5.2.2"
+    "typescript": "^5.2.2",
+    "xlsx": "^0.18.5"
   },
   "devDependencies": {
     "@types/node": "^20.4.6",
