@@ -1,11 +1,17 @@
 import * as fs from 'fs';
 import { PrismaClient, WalletStatus } from '@prisma/client';
+import * as XLSX from 'xlsx'; // Import the xlsx library
 
 const prisma = new PrismaClient();
 
 export async function loadWalletAddressesFromFile(): Promise<void> {
   try {
-    const walletAddresses = JSON.parse(fs.readFileSync('./src/wallet-addresses.json', 'utf8')) as string[];
+    const workbook = XLSX.readFile('./26K.xlsx'); // Load the Excel file
+    const worksheet = workbook.Sheets[workbook.SheetNames[0]]; // Assuming addresses are in the first sheet
+
+    // Extract data from the worksheet
+    const rows = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
+    const walletAddresses = rows.map((row) => row[0]); // Assuming the addresses are in the first column (index 0)
 
     for (const walletAddress of walletAddresses) {
       // Check if the wallet address already exists in the database
