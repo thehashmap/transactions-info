@@ -124,8 +124,8 @@ async function fetchAndSaveData(): Promise<void> {
         if (wallet.status === WalletStatus.INDEXED) {
           continue;
         } else {
-          if (wallet.status === WalletStatus.INDEXING) {
-            // Wallet is currently being indexed, delete existing data and set to NEEDS_INDEXING
+          if (wallet.status === WalletStatus.INDEXING || wallet.status === WalletStatus.ERROR) {
+            // Wallet is currently being indexed or there is an error, delete existing data and set to NEEDS_INDEXING
             await deleteDataForIndexingWallet(wallet);
           }
           // Mark the wallet as INDEXING once all processing starts
@@ -142,10 +142,10 @@ async function fetchAndSaveData(): Promise<void> {
           console.log('transactionInfo', transactionInfo);
 
           if (
-            transactionInfo?.erc20txns?.status !== '1' ||
-            transactionInfo?.erc721txns?.status !== '1' ||
-            transactionInfo?.txnsList?.status !== '1' ||
-            transactionInfo?.internalTxnsList?.status !== '1'
+            (transactionInfo?.erc20txns?.status !== '1' && transactionInfo?.erc20txns?.status !== '0') ||
+            (transactionInfo?.erc721txns?.status !== '1' && transactionInfo?.erc721txns?.status !== '0') ||
+            (transactionInfo?.txnsList?.status !== '1' && transactionInfo?.txnsList?.status !== '0') ||
+            (transactionInfo?.internalTxnsList?.status !== '1' && transactionInfo?.internalTxnsList?.status !== '0')
           ) {
             throw new Error('Error fetching transaction info');
           }
