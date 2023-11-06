@@ -12,7 +12,7 @@ interface BalanceChange {
 
 // Convert a big integer balance to Ether with up to 8 decimal places
 function convertBalanceToEther(balance: bigint): string {
-  const etherBalance = (Number(balance) / 1e18).toFixed(17);
+  const etherBalance = (Number(balance) / 1e18).toFixed(18);
   return etherBalance;
 }
 
@@ -45,32 +45,37 @@ async function getWalletBalanceHistory(walletAddress: string): Promise<BalanceCh
   const combinedTransactions = [...externalTransactions, ...internalTransactions].sort((a, b) => a.timeStamp.getTime() - b.timeStamp.getTime());
 
   for (const tx of combinedTransactions) {
-    // Skip reverted transactions
-    if (tx.isError === '1') {
-      continue;
-    }
-
     let balanceChange = BigInt(0);
+    let gasFees = BigInt(0);
+    let reverted = false;
 
-    // Add to balance if this wallet is the receiver
-    if (tx.to.toLowerCase() === walletAddress.toLowerCase()) {
-      balanceChange += BigInt(tx.value);
+    // Check if the transaction is reverted (isError = 1)
+    if (tx.isError === '1') {
+      reverted = true;
     }
 
-    // Subtract from balance if this wallet is the sender
+    // Calculate gas fees only when the wallet sends funds (balance is deducted)
     if (tx.from.toLowerCase() === walletAddress.toLowerCase()) {
-      balanceChange -= BigInt(tx.value);
-      // Subtract gas only for external transactions
       if ('gasUsed' in tx && 'gasPrice' in tx) {
         const gasUsed = BigInt(tx.gasUsed);
         const gasPrice = BigInt(tx.gasPrice);
-        balanceChange -= gasUsed * gasPrice;
+        gasFees = gasUsed * gasPrice;
       }
     }
 
-    // Apply the balance change and record it with the timestamp
+    // Add to balance if this wallet is the receiver and the transaction is not reverted
+    if (tx.to.toLowerCase() === walletAddress.toLowerCase() && !reverted) {
+      balanceChange += BigInt(tx.value);
+    }
+
+    // Subtract from balance if this wallet is the sender and the transaction is not reverted
+    if (tx.from.toLowerCase() === walletAddress.toLowerCase() && !reverted) {
+      balanceChange -= BigInt(tx.value);
+    }
+
+    // Apply the balance change, record gas fees, and record if the transaction was reverted
     previousBalance = currentBalance;
-    currentBalance += balanceChange;
+    currentBalance += balanceChange - gasFees;
     balanceChanges.push({
       timeStamp: tx.timeStamp,
       currentBalance,
@@ -82,7 +87,7 @@ async function getWalletBalanceHistory(walletAddress: string): Promise<BalanceCh
     // Print balance change for each transaction
     const currentBalanceEther = convertBalanceToEther(currentBalance);
     const previousBalanceEther = convertBalanceToEther(previousBalance);
-    const balanceChangeEther = convertBalanceToEther(balanceChange);
+    const balanceChangeEther = convertBalanceToEther(balanceChange - gasFees);
     console.log(
       `Wallet: ${walletAddress}, Timestamp: ${tx.timeStamp.toISOString()}, Current Balance (Ether): ${currentBalanceEther}, Previous Balance (Ether): ${previousBalanceEther}, Balance Change (Ether): ${balanceChangeEther}`,
     );
