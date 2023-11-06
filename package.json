@@ -12,6 +12,7 @@
     "pool-activity": "tsc && node dist/pool-activity.js",
     "swap-activity": "tsc && node dist/swap-activity.js",
     "load-wallets": "tsc src/walletAddressLoader.ts | node src/walletAddressLoader.js",
+    "balance-history": "tsc src/getWalletBalanceHistory.ts && node src/getWalletBalanceHistory.js",
     "prettier-fix": "prettier --config .prettierrc 'src/**/*.ts' --write",
     "lint": "eslint 'src/**/*.ts'"
   },
