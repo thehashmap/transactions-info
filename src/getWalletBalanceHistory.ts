@@ -1,5 +1,4 @@
 import { PrismaClient, Wallet, WalletStatus } from '@prisma/client';
-import * as path from 'path';
 import * as fs from 'fs';
 
 const prisma = new PrismaClient();
@@ -73,8 +72,79 @@ async function getWalletBalanceHistory(walletId: string, walletAddress: string):
     },
   });
 
-  // Combine and sort transactions by timeStamp
-  const combinedTransactions = [...transactions, ...internalTransactions].sort((a, b) => a.timeStamp.getTime() - b.timeStamp.getTime());
+  // Merge and sort transactions by timeStamp
+  const sortedTransactions = mergeTransactions(transactions, internalTransactions);
+
+  function mergeTransactions(transactions, internalTransactions) {
+    const merged = [];
+    let i = 0;
+    let j = 0;
+
+    while (i < transactions.length && j < internalTransactions.length) {
+      const transaction = transactions[i];
+      const internalTransaction = internalTransactions[j];
+
+      if (transaction.timeStamp < internalTransaction.timeStamp) {
+        merged.push(transaction);
+        i++;
+      } else if (transaction.timeStamp > internalTransaction.timeStamp) {
+        merged.push(mapInternalTransaction(internalTransaction));
+        j++;
+      } else {
+        // Both transactions have the same timestamp
+        merged.push(transaction);
+        merged.push(mapInternalTransaction(internalTransaction));
+        i++;
+        j++;
+      }
+    }
+
+    // Add remaining transactions
+    while (i < transactions.length) {
+      merged.push(transactions[i]);
+      i++;
+    }
+
+    while (j < internalTransactions.length) {
+      merged.push(mapInternalTransaction(internalTransactions[j]));
+      j++;
+    }
+
+    return merged;
+  }
+
+  function mapInternalTransaction(internalTransaction) {
+    // Map internal transaction properties to match Transaction model
+    return {
+      hash: internalTransaction.hash,
+      timeStamp: internalTransaction.timeStamp,
+      value: internalTransaction.value,
+      gasPrice: null,
+      gasUsed: internalTransaction.gasUsed,
+      txreceipt_status: null,
+      isError: internalTransaction.isError,
+      // Fill null values for additional properties specific to Transaction model
+      blockNumber: internalTransaction.blockNumber,
+      from: internalTransaction.from,
+      to: internalTransaction.to,
+      nonce: null,
+      blockHash: null,
+      transactionIndex: null,
+      gas: internalTransaction.gas,
+      input: internalTransaction.input,
+      contractAddress: internalTransaction.contractAddress,
+      cumulativeGasUsed: null,
+      confirmations: null,
+      methodId: null,
+      functionName: null,
+      wallet: internalTransaction.wallet,
+      walletId: internalTransaction.walletId,
+    };
+  }
+
+  // Sort combined transactions by timeStamp
+  const combinedTransactions = sortedTransactions.sort((a, b) => a.timeStamp.getTime() - b.timeStamp.getTime());
+
   let lastTransaction = null;
   let lastBalanceChange = null;
 
@@ -87,12 +157,16 @@ async function getWalletBalanceHistory(walletId: string, walletAddress: string):
     let reverted = false;
 
     // Check if the transaction is reverted (isError = 1)
-    if (tx.isError === '1') {
+    if (tx.txreceipt_status == '0') {
       reverted = true;
+    } else if (tx.txreceipt_status == null) {
+      if (tx.isError === '1') {
+        reverted = true;
+      }
     }
 
     // Calculate gas fees only when the wallet sends funds (balance is deducted)
-    if (tx.from.toLowerCase() === walletAddress.toLowerCase()) {
+    if (tx.from?.toLowerCase() === walletAddress.toLowerCase()) {
       if ('gasUsed' in tx && 'gasPrice' in tx) {
         const gasUsed = BigInt(tx.gasUsed);
         const gasPrice = BigInt(tx.gasPrice);
@@ -102,40 +176,44 @@ async function getWalletBalanceHistory(walletId: string, walletAddress: string):
     }
 
     // Add to balance if this wallet is the receiver and the transaction is not reverted
-    if (tx.to.toLowerCase() === walletAddress.toLowerCase() && !reverted) {
+    if (tx.to?.toLowerCase() === walletAddress.toLowerCase() && !reverted) {
       balanceChange += BigInt(tx.value);
     }
 
     // Subtract from balance if this wallet is the sender and the transaction is not reverted
-    if (tx.from.toLowerCase() === walletAddress.toLowerCase() && !reverted) {
+    if (tx.from?.toLowerCase() === walletAddress.toLowerCase() && !reverted) {
       balanceChange -= BigInt(tx.value);
     }
 
-    if (lastTransaction !== null && tx.timeStamp.toISOString() == lastTransaction.timeStamp.toISOString() && balanceChange == lastBalanceChange) {
+    if (
+      lastTransaction !== null &&
+      tx.hash == lastTransaction.hash &&
+      tx.timeStamp.toISOString() == lastTransaction.timeStamp.toISOString() &&
+      balanceChange == lastBalanceChange &&
+      tx.nonce != null
+    ) {
       console.log('tx timestamp: ', tx.timeStamp);
       console.log('lastTransaction timestamp: ', lastTransaction.timeStamp);
       console.log('skipping');
       console.log('balanceChange: ', balanceChange);
       console.log('lastBalanceChange: ', lastBalanceChange);
       console.log(reverted);
+      console.log('curr hash:', tx.hash);
+      console.log('last hash:', lastTransaction.hash);
 
       // Write the additional log statements to the file
-      outputStream.write(`tx timestamp: ${tx.timeStamp}\n`);
-      outputStream.write(`lastTransaction timestamp: ${lastTransaction.timeStamp}\n`);
+      outputStream.write(`tx timestamp: ${tx.timeStamp.toISOString()}\n`);
+      outputStream.write(`lastTransaction timestamp: ${lastTransaction.timeStamp.toISOString()}\n`);
       outputStream.write('skipping\n');
       outputStream.write(`balanceChange: ${balanceChange}\n`);
       outputStream.write(`lastBalanceChange: ${lastBalanceChange}\n`);
       outputStream.write(`Reverted: ${reverted}\n`);
-
-      let flag = false;
-
-      if (tx.hash == lastTransaction.hash) {
-        flag = true;
-      }
+      outputStream.write(`curr hash: ${tx.hash}\n`);
+      outputStream.write(`last hash: ${lastTransaction.hash}\n`);
 
       lastTransaction = tx;
       lastBalanceChange = balanceChange;
-      if (flag) continue;
+      continue;
     }
 
     // Apply the balance change, record gas fees, and record if the transaction was reverted
@@ -261,7 +339,7 @@ async function calculateBalancesForAllWallets(): Promise<void> {
 // getWalletBalanceHistory('id', '0x004e0c9d0923b8ffb995830bc8ae0bb3e83c3bde');
 // getWalletBalanceHistory('id', '0x986b3b04523c0fd690b2fcf7cd114fc2b7d9e740');
 // getWalletBalanceHistory('id', '0xca317ef5f8978c36c1065184fde08d9dd7c36cfe');
-// getWalletBalanceHistory('id', '0xf03b5f229a14b53094d9566642fb5e2e7273586d');
+getWalletBalanceHistory('id', '0xf03b5f229a14b53094d9566642fb5e2e7273586d');
 // getWalletBalanceHistory('id', '0xba2bdef55e002be35bb1be787c0c9e95781e0ca6');
-getWalletBalanceHistory('id', '0xe07e487d5a5e1098bbb4d259dac5ef83ae273f4e');
+// getWalletBalanceHistory('id', '0xe07e487d5a5e1098bbb4d259dac5ef83ae273f4e');
 // getWalletBalanceHistory('id', '0x469adaf766fb35f1a3c2569fe8c57a50f4b39131'); // wrong isError values
