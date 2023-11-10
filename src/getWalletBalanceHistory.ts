@@ -1,4 +1,6 @@
 import { PrismaClient, Wallet, WalletStatus } from '@prisma/client';
+import * as path from 'path';
+import * as fs from 'fs';
 
 const prisma = new PrismaClient();
 
@@ -52,7 +54,7 @@ async function getWalletBalanceHistory(walletId: string, walletAddress: string):
   let previousBalance = BigInt(0);
 
   // Get all external transactions ordered by timestamp
-  const externalTransactions = await prisma.transaction.findMany({
+  const transactions = await prisma.transaction.findMany({
     where: {
       OR: [{ from: walletAddress }, { to: walletAddress }],
     },
@@ -72,7 +74,12 @@ async function getWalletBalanceHistory(walletId: string, walletAddress: string):
   });
 
   // Combine and sort transactions by timeStamp
-  const combinedTransactions = [...externalTransactions, ...internalTransactions].sort((a, b) => a.timeStamp.getTime() - b.timeStamp.getTime());
+  const combinedTransactions = [...transactions, ...internalTransactions].sort((a, b) => a.timeStamp.getTime() - b.timeStamp.getTime());
+  let lastTransaction = null;
+  let lastBalanceChange = null;
+
+  // Open a write stream to a file (replace 'output.txt' with your desired file name)
+  const outputStream = fs.createWriteStream('output.txt');
 
   for (const tx of combinedTransactions) {
     let balanceChange = BigInt(0);
@@ -104,6 +111,33 @@ async function getWalletBalanceHistory(walletId: string, walletAddress: string):
       balanceChange -= BigInt(tx.value);
     }
 
+    if (lastTransaction !== null && tx.timeStamp.toISOString() == lastTransaction.timeStamp.toISOString() && balanceChange == lastBalanceChange) {
+      console.log('tx timestamp: ', tx.timeStamp);
+      console.log('lastTransaction timestamp: ', lastTransaction.timeStamp);
+      console.log('skipping');
+      console.log('balanceChange: ', balanceChange);
+      console.log('lastBalanceChange: ', lastBalanceChange);
+      console.log(reverted);
+
+      // Write the additional log statements to the file
+      outputStream.write(`tx timestamp: ${tx.timeStamp}\n`);
+      outputStream.write(`lastTransaction timestamp: ${lastTransaction.timeStamp}\n`);
+      outputStream.write('skipping\n');
+      outputStream.write(`balanceChange: ${balanceChange}\n`);
+      outputStream.write(`lastBalanceChange: ${lastBalanceChange}\n`);
+      outputStream.write(`Reverted: ${reverted}\n`);
+
+      let flag = false;
+
+      if (tx.hash == lastTransaction.hash) {
+        flag = true;
+      }
+
+      lastTransaction = tx;
+      lastBalanceChange = balanceChange;
+      if (flag) continue;
+    }
+
     // Apply the balance change, record gas fees, and record if the transaction was reverted
     previousBalance = currentBalance;
     currentBalance += balanceChange;
@@ -119,19 +153,29 @@ async function getWalletBalanceHistory(walletId: string, walletAddress: string):
     const currentBalanceEther = convertBalanceToEther(currentBalance);
     const previousBalanceEther = convertBalanceToEther(previousBalance);
     const balanceChangeEther = convertBalanceToEther(balanceChange);
-    console.log(
-      `Wallet: ${walletAddress}, Timestamp: ${tx.timeStamp.toISOString()}, Current Balance (Ether): ${currentBalanceEther}, Previous Balance (Ether): ${previousBalanceEther}, Balance Change (Ether): ${balanceChangeEther}`,
-    );
+    const logString = `Wallet: ${walletAddress}, Timestamp: ${tx.timeStamp.toISOString()}, Current Balance (Ether): ${currentBalanceEther}, Previous Balance (Ether): ${previousBalanceEther}, Balance Change (Ether): ${balanceChangeEther}, isError: ${
+      tx.isError
+    }, reverted: ${reverted}`;
+
+    console.log(logString);
+
+    // Write the log to the file
+    outputStream.write(logString + '\n');
 
     // Save balance history to the database
-    await saveBalanceHistoryToDB(walletId, {
-      timeStamp: tx.timeStamp,
-      currentBalance,
-      previousBalance,
-      balanceChange,
-      walletAddress,
-    });
+    // await saveBalanceHistoryToDB(walletId, {
+    //   timeStamp: tx.timeStamp,
+    //   currentBalance,
+    //   previousBalance,
+    //   balanceChange,
+    //   walletAddress,
+    // });
+
+    lastTransaction = tx;
+    lastBalanceChange = balanceChange;
   }
+  // Close the write stream when the program is finished
+  outputStream.end();
 
   return balanceChanges;
 }
@@ -204,12 +248,20 @@ async function calculateBalancesForAllWallets(): Promise<void> {
 }
 
 // Example usage:
-calculateBalancesForAllWallets()
-  .then(() => {
-    console.log('Balance calculation completed');
-    prisma.$disconnect();
-  })
-  .catch((e) => {
-    console.error(e);
-    prisma.$disconnect();
-  });
+// calculateBalancesForAllWallets()
+//   .then(() => {
+//     console.log('Balance calculation completed');
+//     prisma.$disconnect();
+//   })
+//   .catch((e) => {
+//     console.error(e);
+//     prisma.$disconnect();
+//   });
+
+// getWalletBalanceHistory('id', '0x004e0c9d0923b8ffb995830bc8ae0bb3e83c3bde');
+// getWalletBalanceHistory('id', '0x986b3b04523c0fd690b2fcf7cd114fc2b7d9e740');
+// getWalletBalanceHistory('id', '0xca317ef5f8978c36c1065184fde08d9dd7c36cfe');
+// getWalletBalanceHistory('id', '0xf03b5f229a14b53094d9566642fb5e2e7273586d');
+// getWalletBalanceHistory('id', '0xba2bdef55e002be35bb1be787c0c9e95781e0ca6');
+getWalletBalanceHistory('id', '0xe07e487d5a5e1098bbb4d259dac5ef83ae273f4e');
+// getWalletBalanceHistory('id', '0x469adaf766fb35f1a3c2569fe8c57a50f4b39131'); // wrong isError values
