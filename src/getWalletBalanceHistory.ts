@@ -142,8 +142,17 @@ async function getWalletBalanceHistory(walletId: string, walletAddress: string):
     };
   }
 
-  // Sort combined transactions by timeStamp
-  const combinedTransactions = sortedTransactions.sort((a, b) => a.timeStamp.getTime() - b.timeStamp.getTime());
+  // Sort combined transactions by timeStamp and hash
+  const combinedTransactions = sortedTransactions.sort((a, b) => {
+    const timestampDiff = a.timeStamp.getTime() - b.timeStamp.getTime();
+
+    if (timestampDiff === 0) {
+      // If timestamps are the same, compare by hash
+      return a.hash.localeCompare(b.hash);
+    }
+
+    return timestampDiff;
+  });
 
   let lastTransaction = null;
   let lastBalanceChange = null;
@@ -157,9 +166,9 @@ async function getWalletBalanceHistory(walletId: string, walletAddress: string):
     let reverted = false;
 
     // Check if the transaction is reverted (isError = 1)
-    if (tx.txreceipt_status == '0') {
+    if (tx.txreceipt_status === '0') {
       reverted = true;
-    } else if (tx.txreceipt_status == null) {
+    } else if (tx.txreceipt_status !== '1') {
       if (tx.isError === '1') {
         reverted = true;
       }
@@ -176,12 +185,12 @@ async function getWalletBalanceHistory(walletId: string, walletAddress: string):
     }
 
     // Add to balance if this wallet is the receiver and the transaction is not reverted
-    if (tx.to?.toLowerCase() === walletAddress.toLowerCase() && !reverted) {
+    if (tx.to?.toLowerCase() != tx.from?.toLowerCase() && tx.to?.toLowerCase() === walletAddress.toLowerCase() && !reverted) {
       balanceChange += BigInt(tx.value);
     }
 
     // Subtract from balance if this wallet is the sender and the transaction is not reverted
-    if (tx.from?.toLowerCase() === walletAddress.toLowerCase() && !reverted) {
+    if (tx.to?.toLowerCase() != tx.from?.toLowerCase() && tx.from?.toLowerCase() === walletAddress.toLowerCase() && !reverted) {
       balanceChange -= BigInt(tx.value);
     }
 
@@ -241,13 +250,13 @@ async function getWalletBalanceHistory(walletId: string, walletAddress: string):
     outputStream.write(logString + '\n');
 
     // Save balance history to the database
-    // await saveBalanceHistoryToDB(walletId, {
-    //   timeStamp: tx.timeStamp,
-    //   currentBalance,
-    //   previousBalance,
-    //   balanceChange,
-    //   walletAddress,
-    // });
+    await saveBalanceHistoryToDB(walletId, {
+      timeStamp: tx.timeStamp,
+      currentBalance,
+      previousBalance,
+      balanceChange,
+      walletAddress,
+    });
 
     lastTransaction = tx;
     lastBalanceChange = balanceChange;
@@ -270,7 +279,7 @@ async function calculateBalancesForAllWallets(): Promise<void> {
 
   for (const wallet of walletAddresses) {
     try {
-      if (wallet.status === WalletStatus.NEEDS_INDEXING) {
+      if (wallet.status === WalletStatus.INDEXED) {
         continue;
       } else {
         if (wallet.status === WalletStatus.INDEXING) {
@@ -306,7 +315,7 @@ async function calculateBalancesForAllWallets(): Promise<void> {
             address: wallet.address,
           },
           data: {
-            status: WalletStatus.NEEDS_INDEXING,
+            status: WalletStatus.INDEXED,
           },
         });
       }
@@ -326,20 +335,12 @@ async function calculateBalancesForAllWallets(): Promise<void> {
 }
 
 // Example usage:
-// calculateBalancesForAllWallets()
-//   .then(() => {
-//     console.log('Balance calculation completed');
-//     prisma.$disconnect();
-//   })
-//   .catch((e) => {
-//     console.error(e);
-//     prisma.$disconnect();
-//   });
-
-// getWalletBalanceHistory('id', '0x004e0c9d0923b8ffb995830bc8ae0bb3e83c3bde');
-// getWalletBalanceHistory('id', '0x986b3b04523c0fd690b2fcf7cd114fc2b7d9e740');
-// getWalletBalanceHistory('id', '0xca317ef5f8978c36c1065184fde08d9dd7c36cfe');
-getWalletBalanceHistory('id', '0xf03b5f229a14b53094d9566642fb5e2e7273586d');
-// getWalletBalanceHistory('id', '0xba2bdef55e002be35bb1be787c0c9e95781e0ca6');
-// getWalletBalanceHistory('id', '0xe07e487d5a5e1098bbb4d259dac5ef83ae273f4e');
-// getWalletBalanceHistory('id', '0x469adaf766fb35f1a3c2569fe8c57a50f4b39131'); // wrong isError values
+calculateBalancesForAllWallets()
+  .then(() => {
+    console.log('Balance calculation completed');
+    prisma.$disconnect();
+  })
+  .catch((e) => {
+    console.error(e);
+    prisma.$disconnect();
+  });
